@@ -16,8 +16,7 @@ export const appConfig: ApplicationConfig = {
     provideKeycloak({
       config: keycloakConfig,
       initOptions: {
-        onLoad: 'check-sso',
-        scope: 'users:read users:write',
+        onLoad: 'check-sso'
       },
     }),
     {
