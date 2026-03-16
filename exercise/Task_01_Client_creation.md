@@ -134,5 +134,18 @@ export const keycloakConfig: KeycloakConfig = {
 
 Your Angular app will now use Keycloak for authentication. When you access a protected route or click the login button, you will be redirected to Keycloak for login.
 
+---
+
+> **Note:**
+>
+> You can always log in to your app with the default Keycloak admin user (`admin` / `admin`) if you have not created any other users yet. However, for a real user experience, you may want to create a regular user account in Keycloak:
+>
+> **How to create a user in Keycloak:**
+> 1. In the Keycloak Admin UI, go to **Users** in the left sidebar.
+> 2. Click **Add user** (top right).
+> 3. Fill in the required fields (e.g., username, email) and click **Create**.
+> 4. Go to the **Credentials** tab for the new user, set a password, and disable **Temporary** if you want the password to be permanent.
+> 5. Save the password.
+> 6. You can now log in with this user in your frontend app.
 
 
