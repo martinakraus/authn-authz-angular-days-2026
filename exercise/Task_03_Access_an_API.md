@@ -118,6 +118,7 @@ On the `users:read` scope detail page, go to the **Mappers** tab:
    - **Name**: `users-read-role`
    - **Client ID**: `angular-days-demo`
    - **Multivalued**: ON
+   - **Token Claim Name**: resource_access.angular-days-demo.roles
    - **Add to access token**: ON
 3. Click **Save**.
 
@@ -126,7 +127,7 @@ On the `users:read` scope detail page, go to the **Mappers** tab:
 Repeat the exact same steps for `users:write`:
 
 1. Create a client scope named `users:write`, type **Optional**.
-2. Add a **User Client Role** mapper named `users-write-role` (Client ID: `angular-days-demo`, Multivalued: ON, Add to access token: ON).
+2. Add a **User Client Role** mapper named `users-write-role` (Client ID: `angular-days-demo`, Token Claim Name: `resource_access.angular-days-demo.roles`, Multivalued: ON, Add to access token: ON).
 
 ---
 
