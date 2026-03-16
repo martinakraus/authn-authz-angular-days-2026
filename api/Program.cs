@@ -1,10 +1,9 @@
+using System.Security.Claims;
+using System.Text.Json;
 using Microsoft.AspNetCore.Authentication.JwtBearer;
-using Microsoft.AspNetCore.Authorization;
-using WebAPIApplication;
 
 var builder = WebApplication.CreateBuilder(args);
 
-// CORS: Entweder AllowAnyOrigin ODER AllowCredentials
 builder.Services.AddCors(options =>
 {
     options.AddPolicy("CORS", policy =>
@@ -16,28 +15,53 @@ builder.Services.AddCors(options =>
     });
 });
 
-var domain = $"https://{builder.Configuration["Keycloak:Domain"]}/";
+var authority = builder.Configuration["Keycloak:Authority"];
+var clientId = builder.Configuration["Keycloak:ClientId"];
 
 builder.Services.AddAuthentication(JwtBearerDefaults.AuthenticationScheme)
     .AddJwtBearer(options =>
     {
-        options.Authority = domain;
-        options.Audience = builder.Configuration["Keycloak:Audience"];
+        options.Authority = authority;
+        options.RequireHttpsMetadata = false;
+        options.TokenValidationParameters = new()
+        {
+            ValidateAudience = false,
+            ValidIssuers = [authority, "http://localhost:8080/realms/master"],
+        };
+        options.Events = new JwtBearerEvents
+        {
+            OnTokenValidated = context =>
+            {
+                // Map Keycloak resource_access.<clientId>.roles to ClaimTypes.Role
+                var identity = context.Principal?.Identity as ClaimsIdentity;
+                var resourceAccess = context.Principal?.FindFirst("resource_access");
+                if (resourceAccess != null)
+                {
+                    using var doc = JsonDocument.Parse(resourceAccess.Value);
+                    if (doc.RootElement.TryGetProperty(clientId!, out var clientAccess) &&
+                        clientAccess.TryGetProperty("roles", out var roles))
+                        foreach (var role in roles.EnumerateArray())
+                        {
+                            var roleValue = role.GetString();
+                            if (roleValue != null)
+                                identity?.AddClaim(new Claim(ClaimTypes.Role, roleValue));
+                        }
+                }
+                return Task.CompletedTask;
+            }
+        };
     });
 
 builder.Services.AddAuthorization(options =>
-    options.AddPolicy("users:read", policy =>
-        policy.Requirements.Add(new HasScopeRequirement("users:read", domain))));
-builder.Services.AddAuthorization(options =>
-    options.AddPolicy("users:write", policy =>
-        policy.Requirements.Add(new HasScopeRequirement("users:write", domain))));
+{
+    options.AddPolicy("users:read", policy => policy.RequireRole("users:read"));
+    options.AddPolicy("users:write", policy => policy.RequireRole("users:write"));
+});
 
 builder.Services.AddControllers();
-builder.Services.AddSingleton<IAuthorizationHandler, HasScopeHandler>();
 
 var app = builder.Build();
 
-// Environment-Check korrigiert
 if (app.Environment.IsDevelopment())
 {
     app.UseDeveloperExceptionPage();
@@ -51,6 +75,6 @@ app.UseHttpsRedirection();
 app.UseCors("CORS");
 app.UseAuthentication();
 app.UseAuthorization();
-app.MapControllers(); // Moderner Ansatz statt UseRouting/UseEndpoints
+app.MapControllers();
 
 app.Run();

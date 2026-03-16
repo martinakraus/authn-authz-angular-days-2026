@@ -1,0 +1,266 @@
+# Task 03 – Protect and Access an API with Keycloak
+
+## Goal
+
+Connect the .NET API to Keycloak so that only authenticated users with the correct **roles** can access protected endpoints. You will create client roles and matching optional **scopes** in Keycloak, assign them to your user, configure the API to validate Keycloak tokens including the **audience** claim, and verify that the API correctly allows or denies requests.
+
+---
+
+## Prerequisites
+
+- Task 01 and Task 02 are completed.
+- You are logged in to your Angular app at **http://localhost:4000**.
+- You have access to the **Keycloak Admin UI** at **http://localhost:8080** (`admin` / `admin`).
+- The API is running at **http://localhost:3000**.
+
+---
+
+## Part 1 – Configure the API to Trust Keycloak
+
+The API validates incoming JWTs by fetching Keycloak's public keys from its **discovery document** and by checking that the token was issued for the correct audience.
+
+### 1. Open the API configuration file
+
+Open the file:
+
+    api/appsettings.json
+
+### 2. Enter the Keycloak Authority and Client ID
+
+Fill in the `Authority` and `ClientId` values:
+
+```json
+{
+  "Keycloak": {
+    "Authority": "http://localhost:8080/realms/master",
+    "ClientId": "angular-days-demo"
+  }
+}
+```
+
+> **What is the Authority?**
+> The authority is the base URL Keycloak uses to sign and issue tokens for a specific realm. The API uses it to automatically fetch Keycloak's public signing keys (via `/.well-known/openid-configuration`) and to verify that incoming tokens were really issued by your Keycloak instance.
+
+> **What is the ClientId used for here?**
+> The API uses the ClientId for two things:
+> 1. **Audience validation** — it checks that the `aud` claim in the JWT contains `angular-days-demo`, ensuring the token was issued specifically for this API.
+> 2. **Role extraction** — it looks at `resource_access.angular-days-demo.roles` to find the client-scoped roles assigned to the user.
+
+### 3. Rebuild and restart the API
+
+```sh
+docker compose up -d --build api
+```
+
+---
+
+## Part 2 – Add an Audience Mapper to the Client
+
+By default, Keycloak does **not** add the client ID to the `aud` (audience) claim of an access token. The API is configured to require that `angular-days-demo` appears in `aud`, so you need to add an **Audience mapper**.
+
+### 1. Navigate to the Client's dedicated scope
+
+In the **Keycloak Admin UI**, go to **Clients** in the left sidebar and open `angular-days-demo`.
+
+Click on the **Client scopes** tab. You will see a scope named **`angular-days-demo-dedicated`** — click its link to open it.
+
+### 2. Add an Audience mapper
+
+1. Go to the **Mappers** tab.
+2. Click **Configure a new mapper**.
+3. Select **Audience** from the list.
+4. Fill in the fields:
+   - **Name**: `api-audience` (or any descriptive name)
+   - **Included Client Audience**: `angular-days-demo`
+   - **Add to access token**: ON
+5. Click **Save**.
+
+> **What does this do?**
+> From now on, every access token issued for this client will include `"aud": ["angular-days-demo"]`. The API validates this claim to ensure it only accepts tokens that were actually intended for it — not tokens from other clients or realms.
+
+---
+
+## Part 3 – Create Client Roles
+
+Client roles are scoped to a specific application. `users:read` and `users:write` are permissions that only make sense in the context of this API — they should not be realm-wide roles that leak into every other application in Keycloak.
+
+### 1. Navigate to your client
+
+Go to **Clients** → `angular-days-demo` → **Roles** tab.
+
+### 2. Create the roles
+
+1. Click **Create role**, set **Role name** to `users:read`, click **Save**.
+2. Click **Create role** again, set **Role name** to `users:write`, click **Save**.
+
+---
+
+## Part 4 – Create Optional Client Scopes
+
+Roles should not automatically appear in every token. Instead, the frontend explicitly **requests** them as OAuth2 scopes. Only when a scope is requested — and the user actually has the corresponding role — will the role appear in the token.
+
+### Create the `users:read` scope
+
+#### 1. Create the scope
+
+Go to **Client Scopes** → **Create client scope**.
+
+- **Name**: `users:read`
+- **Type**: Optional
+- Click **Save**.
+
+#### 2. Add a role mapper
+
+On the `users:read` scope detail page, go to the **Mappers** tab:
+
+1. Click **Configure a new mapper** → **User Client Role**.
+2. Fill in the fields:
+   - **Name**: `users-read-role`
+   - **Client ID**: `angular-days-demo`
+   - **Multivalued**: ON
+   - **Add to access token**: ON
+3. Click **Save**.
+
+### Create the `users:write` scope
+
+Repeat the exact same steps for `users:write`:
+
+1. Create a client scope named `users:write`, type **Optional**.
+2. Add a **User Client Role** mapper named `users-write-role` (Client ID: `angular-days-demo`, Multivalued: ON, Add to access token: ON).
+
+---
+
+## Part 5 – Add the Optional Scopes to the Client and Remove the Built-in `roles` Scope
+
+### 1. Add the optional scopes
+
+Go to **Clients** → `angular-days-demo` → **Client scopes** tab.
+
+1. Click **Add client scope**.
+2. Select `users:read` and `users:write`.
+3. Choose type **Optional** → click **Add**.
+
+### 2. Remove the built-in `roles` default scope
+
+Still on the **Client scopes** tab, find the **`roles`** scope in the Default section:
+
+1. Check its checkbox.
+2. Click **Remove**.
+
+> **Why?**
+> The built-in `roles` scope automatically adds `resource_access` to every token. Removing it means roles will only appear in the token when the frontend explicitly requests `users:read` or `users:write`.
+
+---
+
+## Part 6 – Assign Roles to Your User
+
+Go to **Users** → open your user → **Role mapping** tab:
+
+1. Click **Assign role** → change the filter to **Filter by clients**.
+2. Select `users:read` → click **Assign**.
+3. Repeat for `users:write`.
+
+---
+
+## Part 7 – Verify That the Frontend Requests the Right Scopes
+
+Open `public-client/src/app/app.config.ts` and check the Keycloak `initOptions`:
+
+```typescript
+provideKeycloak({
+  config: keycloakConfig,
+  initOptions: {
+    onLoad: 'check-sso',
+    scope: 'users:read users:write',
+  },
+}),
+```
+
+The `scope` field instructs the Keycloak login flow to request `users:read` and `users:write` in addition to the standard OIDC scopes. Keycloak will only grant these scopes if the user actually has the corresponding roles.
+
+> **No code change needed.** The frontend is already configured correctly. This step is for you to understand the connection between the frontend request and the Keycloak configuration you just set up.
+
+---
+
+## Part 8 – Verify Access to the API
+
+### 1. Log out and log back in
+
+Your existing access token does not yet contain the new roles or the audience claim — token claims are determined at login time. Log out and log back in to get a fresh token.
+
+### 2. Decode your new token
+
+Copy your access token (see Task 02) and decode it at **jwt.ms** or **jwt.io**. Check for these two claims:
+
+**Audience:**
+```json
+"aud": [
+  "angular-days-demo"
+]
+```
+
+**Client roles:**
+```json
+"resource_access": {
+  "angular-days-demo": {
+    "roles": [
+      "users:read",
+      "users:write"
+    ]
+  }
+}
+```
+
+> If `aud` does not contain `angular-days-demo`, the API will reject the request with `401`. If `resource_access` is missing or empty, the API returns `403 Forbidden` even for authenticated users.
+
+### 3. Test via the Angular app
+
+Navigate to the **Users** page in your app at **http://localhost:4000** and confirm the list loads without errors.
+
+### 4. Test with curl
+
+```sh
+# Should return 200 OK with user list
+curl -H "Authorization: Bearer <your-token>" http://localhost:3000/api/users
+
+# Should return 401 Unauthorized
+curl http://localhost:3000/api/users
+```
+
+---
+
+## How it works — Under the Hood
+
+```
+Angular App              Keycloak                   .NET API
+    |                       |                           |
+    |-- login (scope:       |                           |
+    |   users:read,         |                           |
+    |   users:write) ------>|                           |
+    |                       |-- check user has roles    |
+    |                       |-- grant scopes            |
+    |<-- access token -------|                           |
+    |    aud: angular-days-demo                         |
+    |    resource_access.angular-days-demo.roles        |
+    |                       |                           |
+    |-- GET /api/users (Bearer token) ----------------->|
+    |                       |                           |-- fetch JWKS from Keycloak
+    |                       |<---- JWKS ----------------|
+    |                       |                           |-- verify token signature
+    |                       |                           |-- validate aud claim
+    |                       |                           |-- extract resource_access roles
+    |                       |                           |-- check "users:read" -> 200 OK
+    |<-- 200 [users] -----------------------------------|
+```
+
+1. The Angular app requests `users:read` and `users:write` scopes during login.
+2. Keycloak grants the scopes only if the user has the corresponding client roles, then adds them to `resource_access.angular-days-demo.roles` in the token.
+3. The audience mapper adds `angular-days-demo` to the `aud` claim.
+4. The API validates the token signature, checks `aud`, extracts the roles from `resource_access`, and maps them to .NET role claims.
+5. The `[Authorize("users:read")]` attribute checks whether the role is present — if not, it returns `403 Forbidden`.
+
+---
+
+## Done!
+
+Your API is now properly secured with Keycloak. Only authenticated users with the correct roles can access protected endpoints, the token is scoped to this specific API via the audience claim, and the Angular frontend requests only the permissions it actually needs.
