@@ -26,7 +26,7 @@ builder.Services.AddAuthentication(JwtBearerDefaults.AuthenticationScheme)
         options.TokenValidationParameters = new()
         {
             ValidateAudience = false,
-            ValidIssuers = [authority, "http://localhost:8080/realms/master"],
+            ValidIssuers = [authority, "http://localhost:8080/realms/angular-days"],
         };
         options.Events = new JwtBearerEvents
         {

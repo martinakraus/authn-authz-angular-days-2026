@@ -32,7 +32,7 @@ Fill in the `Authority` and `ClientId` values:
 ```json
 {
   "Keycloak": {
-    "Authority": "http://keycloak:8080/realms/master",
+    "Authority": "http://keycloak:8080/realms/angular-days",
     "ClientId": "angular-days-demo"
   }
 }

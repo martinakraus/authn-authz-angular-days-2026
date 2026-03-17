@@ -25,11 +25,29 @@ Navigate to **http://localhost:8080** in your browser and log in with:
 | Username | `admin` |
 | Password | `admin` |
 
-After login you will land in the **master** realm. **Stay in the master realm** for this exercise — do not switch to another realm.
+After login you will land in the **master** realm.
 
 ---
 
-### 2. Navigate to Clients
+### 2. Create a new Realm
+
+A **Realm** in Keycloak is an isolated space for managing users, roles, clients, and authentication settings. Each Realm is completely independent — users and configurations in one Realm are not visible to another. Think of it as a separate tenant or security domain. The **master** Realm is reserved for Keycloak administration, so you should create a dedicated Realm for your application.
+
+1. In the top-left corner, click on the dropdown that says **master**.
+2. Click **Create realm**.
+3. Enter the following:
+
+| Field      | Value           |
+|------------|-----------------|
+| Realm name | `angular-days`  |
+
+4. Click **Create**.
+
+Make sure the new **angular-days** Realm is selected (visible in the top-left dropdown) before continuing.
+
+---
+
+### 3. Navigate to Clients
 
 In the left-hand sidebar, click on **Clients**.
 
@@ -39,7 +57,7 @@ Click the **Create client** button (top right of the client list).
 
 ---
 
-### 3. General Settings
+### 4. General Settings
 
 Fill in the first step of the wizard:
 
@@ -54,7 +72,7 @@ Click **Next**.
 
 ---
 
-### 4. Capability Config — Enable ONLY Authorization Code Flow
+### 5. Capability Config — Enable ONLY Authorization Code Flow
 
 This is the most important step. You need to ensure that **only the Authorization Code Flow** is active.
 
@@ -64,7 +82,7 @@ Click **Next**.
 
 ---
 
-### 5. Login Settings — Redirect URI & Web Origins
+### 6. Login Settings — Redirect URI & Web Origins
 
 Now configure where Keycloak is allowed to redirect after a successful login, and which origins may communicate with Keycloak.
 
@@ -108,7 +126,7 @@ Open the file:
 Fill in the following values based on your Keycloak setup:
 
 - **url**: The base URL of your Keycloak server (e.g., `http://localhost:8080`)
-- **realm**: The realm you are using (e.g., `master`)
+- **realm**: The realm you are using (e.g., `angular-days`)
 - **clientId**: The client ID you created (e.g., `angular-days-demo`)
 
 Example:
@@ -118,7 +136,7 @@ import { KeycloakConfig } from 'keycloak-js';
 
 export const keycloakConfig: KeycloakConfig = {
 	url: 'http://localhost:8080', // Keycloak URL
-	realm: 'master',              // Your realm name
+	realm: 'angular-days',              // Your realm name
 	clientId: 'angular-days-demo' // Your client ID
 };
 ```

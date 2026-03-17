@@ -73,7 +73,7 @@ Once decoded, examine the **payload**. You should find claims like:
 
 ### 1. Open Realm Settings
 
-In the **Keycloak Admin UI**, make sure you are in the **master** realm, then click **Realm settings** in the left sidebar.
+In the **Keycloak Admin UI**, make sure you are in the **angular-days** realm, then click **Realm settings** in the left sidebar.
 
 ---
 
