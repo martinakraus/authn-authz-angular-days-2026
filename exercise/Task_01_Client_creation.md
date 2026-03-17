@@ -156,7 +156,7 @@ Your Angular app will now use Keycloak for authentication. When you access a pro
 
 > **Note:**
 >
-> You can always log in to your app with the default Keycloak admin user (`admin` / `admin`) if you have not created any other users yet. However, for a real user experience, you may want to create a regular user account in Keycloak:
+> You need to create a user in order to login in your frontend:
 >
 > **How to create a user in Keycloak:**
 > 1. In the Keycloak Admin UI, go to **Users** in the left sidebar.
