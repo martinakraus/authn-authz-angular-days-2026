@@ -1,5 +1,9 @@
 # AuthN/AuthZ Angular Workshop – Project Setup
 
+## Slides
+
+[Link](https://docs.google.com/presentation/d/1GLRK8I6vgrenSDRZAPIpTBEtC9NO3YwhZtJigttK5jk/edit?usp=sharing)
+
 ## Prerequisites
 
 - **Docker** and **Docker Compose** must be installed on your machine.
